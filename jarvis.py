@@ -128,6 +128,7 @@ _Q_START = {
     "que", "qué", "cual", "cuál", "cuales", "cuáles", "cuanto", "cuánto",
     "cuanta", "cuánta", "cuando", "cuándo", "donde", "dónde", "como", "cómo",
     "por", "quien", "quién", "quienes", "cuantos", "cuántos",
+    "puedes", "puede", "podrias", "podrías", "dime", "sabes", "tienes",
 }
 _SOCIAL_START = {
     "hola", "buenas", "buenos", "hey", "oye", "gracias", "chao",
@@ -137,7 +138,9 @@ _VERBS = re.compile(
     r"\b(abre|abrir|crea|crear|creame|haz|hazme|levanta|inicia|arranca|prende|"
     r"deten|detén|cierra|apaga|apagame|escribe|dicta|lee|leer|lista|muestra|"
     r"busca|dime|cuentame|cuéntame|explica|explicame|reproduce|salir|ayuda|"
-    r"enciende|reinicia|borra|elimina|descarga|instala|actualiza)\b",
+    r"enciende|reinicia|borra|elimina|descarga|instala|actualiza|"
+    r"ejecuta|ejecutar|corre|correr|parar|detener|iniciar|abrir|crear|"
+    r"cerrar|escribir|leer)\b",
     re.IGNORECASE,
 )
 _PHRASE = re.compile(
@@ -158,13 +161,16 @@ def vale_la_pena(text: str) -> bool:
     words = re.findall(r"[\wáéíóúüñ]+", low)
     if not words:
         return False
-    if words[0] in _Q_START:
-        return True
     if _VERBS.search(low) or _PHRASE.search(low):
         return True
     # Saludo/cortesía corto: "hola", "gracias"... pero NO
     # "Gracias por ver el video" (5 palabras: eso es la tele)
     if words[0] in _SOCIAL_START and len(words) <= 4:
+        return True
+    # Pregunta corta. Las frases largas de la tele también empiezan por
+    # "Cuando..." / "Que..." y no deben pasar ("Cuando se encuentran en
+    # la noche, el día de mi de los años...").
+    if words[0] in _Q_START and len(words) <= 12:
         return True
     return False
 
@@ -300,6 +306,8 @@ def main(argv: list[str] | None = None) -> int:
         print("🎙️  MODO ESCUCHA PERMANENTE: háblale directamente, "
               "sin decir «hey jarvis».")
     print(help_text())
+    # Saludo hablado: si no lo oyes, mira las líneas "(tts ..." en log.txt
+    _say(mode, args.sin_tts, "Jarvis listo. Estoy escuchando.")
 
     while True:
         try:

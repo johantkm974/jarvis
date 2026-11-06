@@ -65,9 +65,10 @@ _RULES: list[tuple[str, str]] = [
                    r"(?:de\s+la\s+)?(?:carpeta|directorio|archivos?)?\s*(?P<path>.*)$"),
     ("list_files", r"^que hay\s*(?:en|de|adentro de)?\s*(?P<path>.*)$"),
     # "cierra chrome" / "cierra todos los navegadores" / "apaga vscode"
-    ("close", r"^(?:cierra|cerrar|apaga|apagar|apagame|termina|finaliza|mate|mata)\s+"
+    # (acepta coma tras el verbo: "Abre, bravo")
+    ("close", r"^(?:cierra|cerrar|apaga|apagar|apagame|termina|finaliza|mate|mata)[,\s]+"
               r"(?:el\s+|la\s+|los\s+|las\s+|un\s+|una\s+)?(?P<target>.+)$"),
-    ("open", r"^(?:abre|abrir|ejecuta|ejecutar|inicia|iniciar|lanza|lanzar|corre|pon)\s+"
+    ("open", r"^(?:abre|abrir|ejecuta|ejecutar|inicia|iniciar|lanza|lanzar|corre|pon)[,\s]+"
              r"(?:el\s+|la\s+|los\s+|las\s+|un\s+|una\s+)?(?P<target>.+)$"),
     # Saludo completo solamente: "hola, ¿qué hora es?" lo cogen otras reglas
     # y frases al azar de la tele ("hola hola hola...") van al API, no a greet.

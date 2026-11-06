@@ -44,6 +44,17 @@ python jarvis.py --voz           # dices "hey jarvis" y hablas
 python jarvis.py --sin-tts       # sin respuesta hablada
 ```
 
+## Arrancar siempre escuchando
+
+- Doble clic en **`Jarvis (voz)`** (escritorio o Inicio): arranca **oculto**, sin
+  ventana, y guarda todo en `log.txt`.
+- Si se cae, **se relanza solo** a los 3 segundos (watchdog en `iniciar_jarvis.vbs`).
+- Para pararlo: **`Detener Jarvis`** → crea `jarvis.stop` y mata el proceso.
+  Volver a arrancar: `Jarvis (voz)` (quita la bandera).
+- Al arrancar dice *«Jarvis listo. Estoy escuchando»*. Si no lo oyes, mira las
+  líneas `(tts ...)` de `log.txt`; si pyttsx3 falla usa el respaldo automático de
+  Windows, o fuerza `JARVIS_TTS=sapi` en `.env`.
+
 ## Comandos
 
 | Dices / escribes | Acción |

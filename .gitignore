@@ -10,4 +10,5 @@ __pycache__/
 workspace/
 log.txt
 jarvis.lock
+jarvis.stop
 *.wav
