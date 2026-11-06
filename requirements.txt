@@ -1,0 +1,4 @@
+# Núcleo (siempre necesario)
+psutil>=5.9.0
+# Cerebro API (opcional: sin clave, Jarvis funciona con reglas locales)
+openai>=1.30.0

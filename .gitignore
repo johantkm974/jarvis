@@ -1,0 +1,13 @@
+# Secretos
+.env
+
+# Artefactos
+__pycache__/
+*.pyc
+.venv/
+
+# Salidas de prueba
+workspace/
+log.txt
+jarvis.lock
+*.wav
