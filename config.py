@@ -47,6 +47,10 @@ SESSION_SECONDS = float(os.getenv("JARVIS_SESION", "90"))
 # 1 = ESCUCHA PERMANENTE: te oye siempre, sin decir "hey jarvis"
 # 0 = modo clásico: esperas la palabra de activación
 ALWAYS = os.getenv("JARVIS_SIEMPRE", "0").strip().lower() in ("1", "true", "si", "sí", "yes")
+# 1 = FILTRO DE RUIDO: en escucha permanente solo reacciona a órdenes y
+# preguntas (evita contestar a la tele o a un vídeo de YouTube).
+# 0 = responde a cualquier frase que transcriba (sin filtrar).
+FILTRO = os.getenv("JARVIS_FILTRO", "1").strip().lower() in ("1", "true", "si", "sí", "yes")
 # Modelo ONNX de la palabra de activación (sin tflite: no existe en Windows)
 WAKE_MODEL = os.getenv("JARVIS_WAKE_MODEL", "hey_jarvis_v0.1.onnx")
 LANGUAGE = os.getenv("JARVIS_LANG", "es")

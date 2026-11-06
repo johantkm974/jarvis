@@ -49,7 +49,7 @@ _RULES: list[tuple[str, str]] = [
     ("processes", r"\b(procesos|que procesos|tasklist|lista[^.?!]{0,15}procesos)\b"),
     ("sysinfo", r"\b(como estas|como va el sistema|estado del sistema|cuanta ram|memoria ram|"
                 r"uso de cpu|uso de memoria|uso de la cpu|cpu)\b"),
-    ("time", r"\b(que hora|hora es|dime la hora|la hora)\b"),
+    ("time", r"\b(que hora|hora es|dime la hora|la hora es|son las)\b"),
     ("date", r"\b(que dia|fecha de hoy|dime la fecha|fecha)\b"),
     ("create_folder", r"^(?:crea|crear|creame|hazme|haz)\s+(?:una\s+|el\s+)?(?:carpeta|directorio)\s+(?P<name>.+)$"),
     ("create_file", r"^(?:crea|crear|creame|hazme|haz)\s+(?:un\s+|el\s+)?(?:archivo|fichero|documento)\s+(?P<name>.+)$"),
@@ -64,9 +64,15 @@ _RULES: list[tuple[str, str]] = [
     ("list_files", r"^(?:lista|listar|muestra)\s+(?:el\s+|la\s+|los\s+|las\s+)?(?:contenido\s+)?"
                    r"(?:de\s+la\s+)?(?:carpeta|directorio|archivos?)?\s*(?P<path>.*)$"),
     ("list_files", r"^que hay\s*(?:en|de|adentro de)?\s*(?P<path>.*)$"),
+    # "cierra chrome" / "cierra todos los navegadores" / "apaga vscode"
+    ("close", r"^(?:cierra|cerrar|apaga|apagar|apagame|termina|finaliza|mate|mata)\s+"
+              r"(?:el\s+|la\s+|los\s+|las\s+|un\s+|una\s+)?(?P<target>.+)$"),
     ("open", r"^(?:abre|abrir|ejecuta|ejecutar|inicia|iniciar|lanza|lanzar|corre|pon)\s+"
              r"(?:el\s+|la\s+|los\s+|las\s+|un\s+|una\s+)?(?P<target>.+)$"),
-    ("greet", r"^(hola|buenas|buenos dias|buenas tardes|buenas noches|hey|oye)\b"),
+    # Saludo completo solamente: "hola, ¿qué hora es?" lo cogen otras reglas
+    # y frases al azar de la tele ("hola hola hola...") van al API, no a greet.
+    ("greet", r"^(?:hola|buenas|buenos dias|buenas tardes|buenas noches|hey|oye)"
+              r"[\s,.!?]*(?:jarvis)?[\s,.!?]*$"),
 ]
 
 _COMPILED: dict[str, re.Pattern[str]] = {}
@@ -119,5 +125,7 @@ def help_text() -> str:
   • crea carpeta proyectos | crea archivo notas.txt
   • escribe Hola mundo en archivo notas.txt | escribe: mi dictado
   • lee archivo notas.txt | lista archivos | que hay en descargas
+  • cierra chrome | cierra word | cierra todos los navegadores
+  • crea archivo hola.txt en desktop  (también: en escritorio, en workspace)
   • que hora | que dia | ayuda | salir
 Lo demás va al cerebro API (si configuraste OPENAI_API_KEY)."""

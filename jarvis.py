@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import sys
 
 from brain import router
@@ -78,12 +79,15 @@ BANNER = """
 
 
 def _say(mode: str, no_tts: bool, text: str) -> None:
-    if mode == "texto" or no_tts or not text or text == "__EXIT__":
+    if mode == "texto" or no_tts:
+        return
+    spoken = _clean_for_speech(text)   # el TTS no debe leer ``` ni ** ni emoji
+    if not spoken:
         return
     try:
         from voice import tts
 
-        tts.say(text)
+        tts.say(spoken)
     except Exception as exc:  # noqa: BLE001
         print(f"   (tts no disponible: {exc})")
 
@@ -115,6 +119,79 @@ def _strip_wakeword(text: str) -> str:
     return re.sub(r"^(hey\s+)?jarvis[\s,.:;-]*", "", text, flags=re.IGNORECASE).strip()
 
 
+# --- Filtro de ruido (tele, vídeos, conversaciones de fondo) -----------------
+# En modo escucha permanente el micrófono también capta la tele. Para no
+# reaccionar a "Gracias por ver el video" o "La Hora de la Cámara",
+# solo pasamos frases que parecen una orden o una pregunta.
+# Desactivable con JARVIS_FILTRO=0 en .env
+_Q_START = {
+    "que", "qué", "cual", "cuál", "cuales", "cuáles", "cuanto", "cuánto",
+    "cuanta", "cuánta", "cuando", "cuándo", "donde", "dónde", "como", "cómo",
+    "por", "quien", "quién", "quienes", "cuantos", "cuántos",
+}
+_SOCIAL_START = {
+    "hola", "buenas", "buenos", "hey", "oye", "gracias", "chao",
+    "adios", "adiós", "perdón", "perdon", "saludos", "jarvis",
+}
+_VERBS = re.compile(
+    r"\b(abre|abrir|crea|crear|creame|haz|hazme|levanta|inicia|arranca|prende|"
+    r"deten|detén|cierra|apaga|apagame|escribe|dicta|lee|leer|lista|muestra|"
+    r"busca|dime|cuentame|cuéntame|explica|explicame|reproduce|salir|ayuda|"
+    r"enciende|reinicia|borra|elimina|descarga|instala|actualiza)\b",
+    re.IGNORECASE,
+)
+_PHRASE = re.compile(
+    r"(que\s+hora|hora\s+es\b|dime\s+la\s+hora|que\s+d[ií]a|fecha\s+de\s+hoy|"
+    r"que\s+puertos|que\s+procesos|cu[aá]nta\s+ram|memoria\s+ram|"
+    r"para\s+(mysql|xampp|apache|base de datos))",
+    re.IGNORECASE,
+)
+
+
+def vale_la_pena(text: str) -> bool:
+    """True si la frase parece una orden/pregunta (no ruido de fondo)."""
+    low = text.strip().lower()
+    if len(low) < 3:
+        return False
+    if "?" in text:
+        return True
+    words = re.findall(r"[\wáéíóúüñ]+", low)
+    if not words:
+        return False
+    if words[0] in _Q_START:
+        return True
+    if _VERBS.search(low) or _PHRASE.search(low):
+        return True
+    # Saludo/cortesía corto: "hola", "gracias"... pero NO
+    # "Gracias por ver el video" (5 palabras: eso es la tele)
+    if words[0] in _SOCIAL_START and len(words) <= 4:
+        return True
+    return False
+
+
+_EMOJI = re.compile(
+    r"[\U0001F000-\U0001FAFF\u2600-\u27BF\u2B00-\u2BFF\uFE0F\u200D"
+    r"\u2190-\u21FF\u2500-\u257F]+"
+)
+
+
+def _clean_for_speech(text: str) -> str:
+    """Deja la respuesta lista para el TTS: sin markdown, sin código, sin emoji."""
+    if not text or text == "__EXIT__":
+        return ""
+    out = re.sub(r"```.*?```", " . Te muestro el código en pantalla. ",
+                      text, flags=re.S)
+    out = re.sub(r"^\s*---+\s*$", "", out, flags=re.M)      # separadores
+    out = re.sub(r"\[\[ACCION:.*?\]\]", "", out)
+    out = re.sub(r"`[^`\n]*`", "", out)                          # código inline
+    out = re.sub(r"^\s{0,3}(?:[-*+]|\d+[.)])\s+", "", out, flags=re.M)  # listas
+    out = re.sub(r"^\s{0,3}#{1,6}\s*", "", out, flags=re.M)  # encabezados
+    out = re.sub(r"[*_~]{1,3}", "", out)                         # negritas
+    out = _EMOJI.sub("", out)
+    out = re.sub(r"\s+", " ", out).strip(" -–—:;,.")
+    return out[:700]
+
+
 _session_until = 0.0
 
 
@@ -133,6 +210,9 @@ def _input_voz() -> str | None:
             return ""
         text = _strip_wakeword(text)
         if len(text) < 3:      # ruido o solo "jarvis": lo ignoramos
+            return ""
+        if config.FILTRO and not vale_la_pena(text):
+            print(f"Escuchado> {text}   (ignorado por ruido)")
             return ""
         print(f"Escuchado> {text}")
         return text

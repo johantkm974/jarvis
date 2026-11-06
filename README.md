@@ -50,13 +50,16 @@ python jarvis.py --sin-tts       # sin respuesta hablada
 |---|---|
 | `abre youtube` / `abre chatgpt` / `abre github` | Navegador |
 | `abre chrome`, `abre calculadora`, `abre vscode` | Programas instalados |
+| `abre steam`, `abre word`, `abre gemini`… | Menú Inicio; si no está, búsqueda en Google |
+| `cierra chrome` · `cierra word` · `cierra todos los navegadores` | Cierra procesos |
 | `abre opencode` | OpenCode en una terminal nueva |
 | `levanta mysql` / `para mysql` / `estado de mysql` | XAMPP (arranca/para/comprueba) |
 | `que puertos` | Lista puertos en escucha + proceso dueño |
 | `que proceso usa el puerto 3300` | Quién usa ese puerto |
 | `que procesos` | Top 10 por memoria |
 | `como estas` | CPU / RAM / disco |
-| `crea carpeta proyectos` | Carpeta en `workspace/` |
+| `crea carpeta proyectos` | Carpeta en `workspace/` (o en escritorio si lo dices) |
+| `crea archivo hola.txt en desktop` | Destino: `en escritorio` / `en desktop` / `en workspace` / `en descargas` |
 | `crea archivo notas.txt` | Archivo vacío |
 | `escribe Hola mundo en archivo notas.txt` | Añade texto |
 | `escribe: mi dictado` | Añade a `workspace/dictado.txt` |
@@ -77,10 +80,14 @@ Sin tocar nada más: `router.py` ya sabe enchufarla.
 
 ## Seguridad
 
-- Los archivos se crean por defecto en `jarvis/workspace/` (rutas absolutas también valen).
-- Jarvis **no** ejecuta acciones destructivas (borrar/mover) todavía: pídelo y se añade
-  con confirmación obligatoria antes de ejecutar.
-- La API solo recibe el texto que tú escribes; no se suben archivos.
+- Los archivos se crean por defecto en `jarvis/workspace/`; di «en escritorio»,
+  «en desktop», «en workspace» o «en descargas» para otra carpeta.
+- Puede **cerrar** aplicaciones (`cierra chrome`, `cierra word`) pero **no** borra
+  ni mueve archivos todavía.
+- Con `JARVIS_FILTRO=1` (por defecto) el modo escucha permanente ignora la tele y
+  los vídeos: solo reacciona a órdenes y preguntas. Pon `JARVIS_FILTRO=0` en `.env`
+  para que responda a cualquier frase.
+- La API solo recibe lo que transcribe el micrófono; no se suben archivos.
 
 ## Requisitos de voz
 

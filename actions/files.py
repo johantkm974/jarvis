@@ -1,9 +1,12 @@
 """Acciones sobre archivos y carpetas.
 
-Todo se resuelve dentro de config.WORKSPACE salvo que des una ruta absoluta.
+Todo se resuelve dentro de config.WORKSPACE salvo que des una ruta absoluta
+o especifiques un destino: "escritorio", "desktop", "workspace",
+"documentos", "descargas".
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import config
@@ -11,26 +14,80 @@ import config
 DEFAULT_NOTE = "dictado.txt"
 MAX_READ = 4000  # caracteres máximos al leer
 
+# "en el escritorio" / "en desktop" / "en mi escritorio" / "en workspace"...
+_DEST_RE = re.compile(
+    r"\s+(?:en|a|al|para|dentro de|en el directorio de|en la carpeta de|de)\s+"
+    r"(?:el\s+|la\s+|mi\s+|los\s+|las\s+)?"
+    r"(escritorio|desktop|workspace|carpeta de trabajo|documentos|mis documentos|"
+    r"documents|descargas|downloads)\s*$",
+    re.IGNORECASE,
+)
+
+
+def _desktop_dir() -> Path:
+    """Escritorio real (respeta el redireccionamiento de OneDrive)."""
+    try:
+        import winreg
+
+        with winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders",
+        ) as key:
+            valor, _tipo = winreg.QueryValueEx(key, "Desktop")
+            import os as _os
+
+            ruta = Path(_os.path.expandvars(valor)).expanduser()
+            if ruta.is_dir():
+                return ruta
+    except Exception:  # noqa: BLE001 - sin registro: ruta clásica
+        pass
+    return Path.home() / "Desktop"
+
+
+def _destino_base(clave: str) -> Path:
+    key = clave.lower()
+    if key in ("escritorio", "desktop"):
+        return _desktop_dir()
+    if key in ("documentos", "mis documentos", "documents"):
+        return Path.home() / "Documents"
+    if key in ("descargas", "downloads"):
+        return Path.home() / "Downloads"
+    return config.WORKSPACE   # workspace / carpeta de trabajo
+
+
+def split_destino(raw: str) -> tuple[str, Path | None]:
+    """Separla «nombre en escritorio» -> ('nombre', C:\\...\\Desktop)."""
+    texto = (raw or "").strip()
+    m = _DEST_RE.search(texto)
+    if not m:
+        return texto, None
+    nombre = texto[: m.start()].strip()
+    return (nombre or texto), _destino_base(m.group(1))
+
 
 def _resolve(name: str) -> Path:
-    raw = (name or "").strip().strip('"').strip(" .")
+    nombre, base = split_destino(name)
+    raw = nombre.strip().strip('"').strip(" .")
     if not raw:
         raw = DEFAULT_NOTE
     p = Path(raw).expanduser()
     if not p.is_absolute():
-        p = config.WORKSPACE / p
-    if not p.suffix and p.suffix != ".":   # sin extensión -> .txt
+        p = (base or config.WORKSPACE) / p
+    if not p.suffix:                      # sin extensión -> .txt
         p = p.with_suffix(".txt")
     return p
 
 
 def create_folder(slots: dict) -> str:
-    p = _resolve(slots.get("name", ""))
-    # una carpeta no lleva .txt
-    if p.suffix == ".txt" and "." not in Path(slots.get("name", "")).name:
-        p = p.with_suffix("")
+    nombre, base = split_destino(slots.get("name", ""))
+    p = Path(nombre.strip().strip('"').strip(" .")).expanduser()
+    if not p.is_absolute():
+        p = (base or config.WORKSPACE) / p
+    if p.suffix == ".txt" and "." not in p.name[:-4]:
+        p = p.with_suffix("")             # una carpeta no lleva .txt
     p.mkdir(parents=True, exist_ok=True)
-    return f"📁 Carpeta creada: {p}"
+    donde = "Escritorio" if str(p).startswith(str(_desktop_dir())) else str(p)
+    return f"📁 Carpeta creada en {donde}: {p.name}"
 
 
 def create_file(slots: dict) -> str:
@@ -39,7 +96,8 @@ def create_file(slots: dict) -> str:
     if p.exists():
         return f"ℹ️ El archivo ya existía: {p}"
     p.write_text("", encoding="utf-8")
-    return f"📄 Archivo creado: {p}"
+    donde = "Escritorio" if str(p).startswith(str(_desktop_dir())) else str(p)
+    return f"📄 Archivo creado en {donde}"
 
 
 def write_text(slots: dict) -> str:
@@ -54,7 +112,13 @@ def write_text(slots: dict) -> str:
 
 
 def read_file(slots: dict) -> str:
-    p = _resolve(slots.get("name", ""))
+    nombre, base = split_destino(slots.get("name", ""))
+    raw = nombre.strip().strip('"').strip(" .")
+    p = Path(raw).expanduser()
+    if not p.is_absolute():
+        p = (base or config.WORKSPACE) / p
+    if not p.suffix and p.exists() is False:
+        p = p.with_suffix(".txt")
     if not p.is_file():
         return f"❌ No existe {p}"
     content = p.read_text(encoding="utf-8", errors="replace")
@@ -64,10 +128,14 @@ def read_file(slots: dict) -> str:
 
 
 def list_files(slots: dict) -> str:
-    raw = (slots.get("path") or "").strip()
-    p = Path(raw).expanduser() if raw else config.WORKSPACE
-    if not p.is_absolute():
-        p = config.WORKSPACE / p if raw else config.WORKSPACE
+    raw, base = split_destino(slots.get("path") or "")
+    raw = raw.strip()
+    if not raw:
+        p = config.WORKSPACE
+    else:
+        p = Path(raw).expanduser()
+        if not p.is_absolute():
+            p = (base or config.WORKSPACE) / p
     if not p.exists():
         return f"❌ No existe {p}"
     if p.is_file():

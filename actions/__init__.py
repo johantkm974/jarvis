@@ -19,6 +19,7 @@ HANDLERS = {
     "exit": _exit,
     "greet": lambda s: "Hola. Estoy listo, dime qué necesitas.",
     "open": lambda s: apps.open_target(s.get("target", "")),
+    "close": lambda s: apps.close_target(s.get("target", "")),
     "opencode": lambda s: apps.open_opencode(),
     "mysql_start": lambda s: system.mysql_start(),
     "mysql_stop": lambda s: system.mysql_stop(),
