@@ -56,12 +56,18 @@ def wait(cancel_check=None) -> bool:
     stream = pa.open(format=pa.get_format_from_width(2), channels=1,
                      rate=16000, input=True, frames_per_buffer=SAMPLES_PER_CHUNK)
     window_best = 0.0
+    window_voice = 0
     last_log = _time.time()
     try:
         while True:
             if cancel_check is not None and cancel_check():
                 return False
             data = stream.read(SAMPLES_PER_CHUNK, exception_on_overflow=False)
+            import array as _array
+
+            _s = _array.array("h", data)
+            voice = max(max(_s), -min(_s)) if _s else 0
+            window_voice = max(window_voice, voice)
             scores = model.predict(np.frombuffer(data, dtype=np.int16))
             best = max(scores.values()) if scores else 0
             window_best = max(window_best, best)
@@ -70,9 +76,10 @@ def wait(cancel_check=None) -> bool:
                 return True
             now = _time.time()
             if now - last_log >= 10:
-                print(f"[wake] escuchando... score máx {window_best:.3f} "
+                print(f"[wake] score máx {window_best:.3f} | voz máx {window_voice} "
                       f"(umbral {THRESHOLD})", flush=True)
                 window_best = 0.0
+                window_voice = 0
                 last_log = now
     finally:
         stream.stop_stream()

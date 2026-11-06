@@ -119,12 +119,23 @@ _session_until = 0.0
 
 
 def _input_voz() -> str | None:
-    """Palabra de activación + SESIÓN de voz libre (sin repetir «hey jarvis»)."""
+    """Escucha permanente (si ALWAYS) o palabra de activación + sesión libre."""
     global _session_until
     import time
 
     import config
     from voice import stt, wake
+
+    # --- Modo escucha permanente: sin frase de activación -----------------
+    if config.ALWAYS:
+        text = stt.listen()
+        if not text:
+            return ""
+        text = _strip_wakeword(text)
+        if len(text) < 3:      # ruido o solo "jarvis": lo ignoramos
+            return ""
+        print(f"Escuchado> {text}")
+        return text
 
     # --- Sesión abierta: sigue hablando directamente ----------------------
     if time.time() < _session_until:
@@ -163,8 +174,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--cmd", help="ejecuta un único comando y sale")
     parser.add_argument("--test-mic", nargs="?", const=60, type=int, default=0, metavar="SEG",
                         help="mide micrófono y wake word en vivo (60 s por defecto)")
+    parser.add_argument("--siempre", action="store_true",
+                        help="escucha permanente: sin decir 'hey jarvis'")
     args = parser.parse_args(argv)
     _fix_console()
+
+    if args.siempre:
+        import config as _cfg
+
+        _cfg.ALWAYS = True
 
     if args.test_mic:
         from voice import diagnostico
@@ -195,7 +213,12 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     atexit.register(_release_lock)
 
+    import config as _cfg
+
     print(BANNER)
+    if _cfg.ALWAYS:
+        print("🎙️  MODO ESCUCHA PERMANENTE: háblale directamente, "
+              "sin decir «hey jarvis».")
     print(help_text())
 
     while True:
